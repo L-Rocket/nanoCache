@@ -1,0 +1,18 @@
+# C++ Artifacts
+build/
+*.o
+*.obj
+*.exe
+*.dll
+*.dylib
+cpp-impl/bin/
+
+# Go Artifacts
+go-impl/bin/
+*.test
+vendor/
+
+# IDE/Editor
+.vscode/
+.idea/
+.DS_Store
