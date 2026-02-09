@@ -4,19 +4,19 @@ import (
 	"time"
 )
 
-type cache struct {
+type Cache struct {
 	shards []*shard
 	stop   chan struct{}
 }
 
-func newCache(numShards int) *cache {
+func NewCache(numShards int) *Cache {
 
 	cnt := 2
 	for cnt < numShards {
 		cnt <<= 1
 	}
 
-	c := &cache{
+	c := &Cache{
 		shards: make([]*shard, cnt),
 		stop:   make(chan struct{}),
 	}
@@ -30,7 +30,7 @@ func newCache(numShards int) *cache {
 	return c
 }
 
-func (c *cache) janitor_clean() {
+func (c *Cache) janitor_clean() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -51,25 +51,25 @@ func (c *cache) janitor_clean() {
 	}
 }
 
-func (c *cache) Close() {
+func (c *Cache) Close() {
 	close(c.stop)
 }
 
-func (c *cache) getIndex(key string) uint64 {
+func (c *Cache) getIndex(key string) uint64 {
 	return fnv1a_hash(key) & (uint64(len(c.shards)) - 1)
 }
 
-func (c *cache) Set(key string, value string, ttl time.Duration) {
+func (c *Cache) Set(key string, value string, ttl time.Duration) {
 	index := c.getIndex(key)
 	c.shards[index].set(key, value, ttl)
 }
 
-func (c *cache) Get(key string) (string, bool) {
+func (c *Cache) Get(key string) (string, bool) {
 	index := c.getIndex(key)
 	return c.shards[index].get(key)
 }
 
-func (c *cache) Delete(key string) {
+func (c *Cache) Delete(key string) {
 	index := c.getIndex(key)
 	c.shards[index].delete(key)
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func TestCacheConcurrentSetGet(t *testing.T) {
-	c := newCache(8)
+	c := NewCache(8)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -35,7 +35,7 @@ func TestCacheConcurrentSetGet(t *testing.T) {
 }
 
 func TestCacheConcurrentDeleteGet(t *testing.T) {
-	c := newCache(4)
+	c := NewCache(4)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -89,7 +89,7 @@ func TestShardConcurrentSetGet(t *testing.T) {
 }
 
 func TestCacheConcurrentMixedOperations(t *testing.T) {
-	c := newCache(16)
+	c := NewCache(16)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -128,7 +128,7 @@ func TestCacheConcurrentMixedOperations(t *testing.T) {
 }
 
 func TestCacheConcurrentWithJanitor(t *testing.T) {
-	c := newCache(8)
+	c := NewCache(8)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -154,7 +154,7 @@ func TestCacheConcurrentWithJanitor(t *testing.T) {
 }
 
 func BenchmarkCacheSet(b *testing.B) {
-	c := newCache(16)
+	c := NewCache(16)
 	defer c.Close()
 
 	b.ResetTimer()
@@ -165,7 +165,7 @@ func BenchmarkCacheSet(b *testing.B) {
 }
 
 func BenchmarkCacheGet(b *testing.B) {
-	c := newCache(16)
+	c := NewCache(16)
 	defer c.Close()
 
 	c.Set("bench-key", "value", time.Second)
@@ -177,7 +177,7 @@ func BenchmarkCacheGet(b *testing.B) {
 }
 
 func BenchmarkCacheConcurrentSetGet(b *testing.B) {
-	c := newCache(16)
+	c := NewCache(16)
 	defer c.Close()
 
 	b.ResetTimer()
