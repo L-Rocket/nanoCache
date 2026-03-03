@@ -24,3 +24,5 @@ add_test(NAME test_ShardedCache_concurrent COMMAND test_ShardedCache_concurrent)
 add_executable(main src/main.cpp src/SimpleCache.cpp)
 
 add_executable(cli apps/cli.cpp src/SimpleCache.cpp)
+
+add_executable(benchmark_sharded_cache benchmarks/benchmark_sharded_cache.cpp src/ShardedCache.cpp src/CacheShared.cpp)
