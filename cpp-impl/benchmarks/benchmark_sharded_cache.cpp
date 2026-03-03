@@ -14,11 +14,22 @@ struct Result {
     size_t operations;
 };
 
+std::vector<std::string> build_keys(size_t operations) {
+    std::vector<std::string> keys;
+    keys.reserve(operations);
+    for (size_t i = 0; i < operations; ++i) {
+        keys.push_back("k" + std::to_string(i));
+    }
+    return keys;
+}
+
 Result run_set_benchmark(size_t operations) {
     ShardedCache cache;
+    const auto keys = build_keys(operations);
+
     auto start = Clock::now();
     for (size_t i = 0; i < operations; ++i) {
-        cache.set("k" + std::to_string(i), "v");
+        cache.set(keys[i], "v");
     }
     auto end = Clock::now();
     std::chrono::duration<double> diff = end - start;
@@ -27,13 +38,15 @@ Result run_set_benchmark(size_t operations) {
 
 Result run_get_benchmark(size_t operations) {
     ShardedCache cache;
+    const auto keys = build_keys(operations);
+
     for (size_t i = 0; i < operations; ++i) {
-        cache.set("k" + std::to_string(i), "v");
+        cache.set(keys[i], "v");
     }
 
     auto start = Clock::now();
     for (size_t i = 0; i < operations; ++i) {
-        (void)cache.get("k" + std::to_string(i));
+        (void)cache.get(keys[i]);
     }
     auto end = Clock::now();
     std::chrono::duration<double> diff = end - start;
@@ -46,11 +59,20 @@ Result run_concurrent_set_get_benchmark(size_t operations, size_t threads) {
     workers.reserve(threads);
 
     const size_t per_thread = operations / threads;
+    std::vector<std::vector<std::string>> keys(threads);
+    for (size_t t = 0; t < threads; ++t) {
+        auto& thread_keys = keys[t];
+        thread_keys.reserve(per_thread);
+        for (size_t i = 0; i < per_thread; ++i) {
+            thread_keys.push_back("k" + std::to_string(t) + "_" + std::to_string(i));
+        }
+    }
+
     auto start = Clock::now();
     for (size_t t = 0; t < threads; ++t) {
-        workers.emplace_back([t, per_thread, &cache]() {
+        workers.emplace_back([t, per_thread, &cache, &keys]() {
             for (size_t i = 0; i < per_thread; ++i) {
-                std::string key = "k" + std::to_string(t) + "_" + std::to_string(i);
+                const std::string& key = keys[t][i];
                 cache.set(key, "v");
                 (void)cache.get(key);
             }
