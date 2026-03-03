@@ -53,13 +53,11 @@ go run cmd/server/main.go
 
 Baseline result (sample from local run; your machine may differ).
 
-> Unit is unified to **ops/s** for both C++ and Go for direct comparison.
-
-| Scenario | C++ (ops/s) | Go (ops/s, converted from ns/op) |
+| Scenario | C++ (ops/s) | Go (ops/s) |
 | :--- | :--- | :--- |
-| Set | `~1.22e6` | `~0.61e6–0.80e6` |
-| Get | `~2.78e6` | `~12.0e6–13.4e6` |
-| Concurrent Set+Get | `~1.06e7` | `~1.18e6–1.49e6` |
+| Set | `~1.22e6` | `~0.71e6` |
+| Get | `~2.78e6` | `~12.7e6` |
+| Concurrent Set+Get | `~1.06e7` | `~1.34e6` |
 
 ### Why performance may differ (quick analysis)
 
