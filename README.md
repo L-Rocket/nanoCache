@@ -48,15 +48,33 @@ go run cmd/server/main.go
 
 ## 📊 Performance Benchmark
 
-*Creating a baseline comparison between the two implementations.*
+Baseline result (sample from local run; your machine may differ):
 
-| Metric | C++ Implementation | Go Implementation |
+| Scenario | C++ | Go |
 | :--- | :--- | :--- |
-| **Throughput (OPS)** | *TBD* | *TBD* |
-| **Memory Footprint** | *TBD* | *TBD* |
-| **Lock Contention** | *High/Low* | *High/Low* |
+| Set | `~1.22e6 ops/s` | `~1258–1629 ns/op` |
+| Get | `~2.78e6 ops/s` | `~74.7–83.4 ns/op` |
+| Concurrent Set+Get | `~1.06e7 ops/s` | `~671.6–847.3 ns/op` |
 
-> *Benchmarks will be run on [Your CPU Specs] with 100 concurrent workers and 1M keys.*
+> Note: C++ benchmark currently reports **ops/s**, while Go benchmark reports **ns/op** from `testing.B`. This is suitable for trend comparison, not strict apples-to-apples absolute comparison.
+
+### 简单原因分析（为什么会有差异）
+
+1. **运行时模型差异**
+   - C++ 直接运行在原生线程模型上，热点路径更容易接近“零额外运行时开销”。
+   - Go 有 goroutine 调度与 GC 参与，吞吐在高并发下很稳，但单次操作会有调度/运行时成本。
+
+2. **内存分配与回收机制差异**
+   - C++ 主要由程序控制对象生命周期，路径可预测。
+   - Go 在 `Set`/并发场景下会有分配与 GC 压力（从 benchmark 的 allocs/op 也能看出）。
+
+3. **锁与并发访问模式**
+   - 两者都用分片 + 读写锁，设计思路一致。
+   - 但具体锁实现和调度策略不同，会影响在冲突场景下的延迟与吞吐表现。
+
+4. **基准实现方式不同**
+   - Go 用 `go test -bench`，统计维度是 `ns/op`、`B/op`、`allocs/op`。
+   - C++ 当前是自定义计时程序，指标以 `ops/s` 为主。若要更严格对齐，建议后续统一到同一负载模型、同一指标单位（例如都换算为吞吐+P99）。
 
 ## 📝 Key Learnings (The Migration Journey)
 
