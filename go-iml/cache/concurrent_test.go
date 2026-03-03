@@ -157,10 +157,14 @@ func BenchmarkCacheSet(b *testing.B) {
 	c := NewCache(16)
 	defer c.Close()
 
+	keys := make([]string, b.N)
+	for i := 0; i < b.N; i++ {
+		keys[i] = fmt.Sprintf("bench-key-%d", i)
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		key := fmt.Sprintf("bench-key-%d", i)
-		c.Set(key, "value", time.Second)
+		c.Set(keys[i], "value", time.Second)
 	}
 }
 
@@ -168,26 +172,39 @@ func BenchmarkCacheGet(b *testing.B) {
 	c := NewCache(16)
 	defer c.Close()
 
-	c.Set("bench-key", "value", time.Second)
+	keys := make([]string, b.N)
+	for i := 0; i < b.N; i++ {
+		keys[i] = fmt.Sprintf("bench-key-%d", i)
+		c.Set(keys[i], "value", time.Second)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c.Get("bench-key")
+		c.Get(keys[i])
 	}
 }
 
 func BenchmarkCacheConcurrentSetGet(b *testing.B) {
 	c := NewCache(16)
 	defer c.Close()
+	const workers = 16
+	opsPerWorker := b.N / workers
+	keys := make([][]string, workers)
+	for w := 0; w < workers; w++ {
+		keys[w] = make([]string, opsPerWorker)
+		for i := 0; i < opsPerWorker; i++ {
+			keys[w][i] = fmt.Sprintf("bench-%d-%d", w, i)
+		}
+	}
 
 	b.ResetTimer()
 	var wg sync.WaitGroup
-	for i := 0; i < 16; i++ {
+	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < b.N/16; j++ {
-				key := fmt.Sprintf("bench-%d-%d", id, j)
+			for j := 0; j < opsPerWorker; j++ {
+				key := keys[id][j]
 				c.Set(key, "value", time.Second)
 				c.Get(key)
 			}
@@ -198,15 +215,24 @@ func BenchmarkCacheConcurrentSetGet(b *testing.B) {
 
 func BenchmarkShardConcurrentSetGet(b *testing.B) {
 	s := newShard()
+	const workers = 16
+	opsPerWorker := b.N / workers
+	keys := make([][]string, workers)
+	for w := 0; w < workers; w++ {
+		keys[w] = make([]string, opsPerWorker)
+		for i := 0; i < opsPerWorker; i++ {
+			keys[w][i] = fmt.Sprintf("shard-bench-%d-%d", w, i)
+		}
+	}
 
 	b.ResetTimer()
 	var wg sync.WaitGroup
-	for i := 0; i < 16; i++ {
+	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < b.N/16; j++ {
-				key := fmt.Sprintf("shard-bench-%d-%d", id, j)
+			for j := 0; j < opsPerWorker; j++ {
+				key := keys[id][j]
 				s.set(key, "value", time.Minute)
 				s.get(key)
 			}
