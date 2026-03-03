@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  go-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Run Go tests
+        run: go test ./...
+
+      - name: Run Go benchmark smoke
+        run: go test ./go-iml/cache -run '^$' -bench 'BenchmarkCache(Set|Get|ConcurrentSetGet)$' -benchmem -benchtime=100ms -count=1
+
+  cpp-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -S cpp-impl -B cpp-impl/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build tests and benchmark
+        run: cmake --build cpp-impl/build --config Release --parallel
+
+      - name: Run C++ tests
+        run: ctest --test-dir cpp-impl/build --output-on-failure
+
+      - name: Run C++ benchmark smoke
+        run: ./cpp-impl/build/benchmark_sharded_cache --ops 50000 --threads 8

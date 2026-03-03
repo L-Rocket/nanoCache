@@ -21,7 +21,7 @@ To minimize lock contention in high-concurrency scenarios, NanoCache uses a **Sh
 ## 📂 Structure
 
 - **[`cpp-impl/`](./cpp-impl)**: The baseline implementation using C++17. Focuses on manual memory management using `std::shared_ptr` and `std::shared_mutex`.
-- **[`go-impl/`](./go-impl)**: The target implementation using Go. Focuses on Goroutines, Channels, and the Go runtime scheduler.
+- **[`go-iml/`](./go-iml)**: The target implementation using Go. Focuses on Goroutines, Channels, and the Go runtime scheduler.
 
 ## 🚀 Getting Started
 
@@ -42,7 +42,6 @@ make
 Requirements: Go >= 1.20.
 
 ```bash
-cd go-impl
 go mod tidy
 go run cmd/server/main.go
 ```
@@ -72,3 +71,23 @@ go run cmd/server/main.go
 ## License
 
 MIT
+
+## 🔁 CI/CD
+
+GitHub Actions workflow is provided at `.github/workflows/ci.yml` with:
+- Go unit tests + benchmark smoke test
+- C++ CMake build + CTest + benchmark smoke test
+
+## 🧪 Local Performance Comparison (C++ vs Go)
+
+Run one command from repo root:
+
+```bash
+./scripts/compare_cpp_go_perf.sh
+```
+
+It will:
+1. Run Go benchmarks in `go-iml/cache`
+2. Build C++ benchmark target
+3. Run C++ benchmark and print ops/s
+4. Save raw outputs to `perf_go.txt` and `perf_cpp.txt`
