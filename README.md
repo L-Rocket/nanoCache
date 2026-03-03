@@ -1,9 +1,11 @@
 # NanoCache: High-Performance In-Memory Cache
 
+English (default) | [简体中文](./README.zh-CN.md)
+
 ![Language](https://img.shields.io/badge/language-C%2B%2B17%20%7C%20Go-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-NanoCache is a sharded, thread-safe in-memory key-value store. 
+NanoCache is a sharded, thread-safe in-memory key-value store.
 
 This project serves as a **comparative study between Modern C++ (C++17) and Go**, implementing the same architectural design to explore the differences in:
 - Concurrency models (OS Threads vs. Goroutines)
@@ -58,31 +60,32 @@ Baseline result (sample from local run; your machine may differ):
 
 > Note: C++ benchmark currently reports **ops/s**, while Go benchmark reports **ns/op** from `testing.B`. This is suitable for trend comparison, not strict apples-to-apples absolute comparison.
 
-### 简单原因分析（为什么会有差异）
+### Why performance may differ (quick analysis)
 
-1. **运行时模型差异**
-   - C++ 直接运行在原生线程模型上，热点路径更容易接近“零额外运行时开销”。
-   - Go 有 goroutine 调度与 GC 参与，吞吐在高并发下很稳，但单次操作会有调度/运行时成本。
+1. **Runtime model differences**
+   - C++ runs directly on native threads and can keep hot paths close to zero runtime overhead.
+   - Go includes goroutine scheduling and GC behavior, which improves concurrency ergonomics but adds runtime cost per operation.
 
-2. **内存分配与回收机制差异**
-   - C++ 主要由程序控制对象生命周期，路径可预测。
-   - Go 在 `Set`/并发场景下会有分配与 GC 压力（从 benchmark 的 allocs/op 也能看出）。
+2. **Allocation and memory management differences**
+   - C++ object lifetime is more explicitly controlled.
+   - Go `Set`/concurrent paths may introduce allocation and GC pressure (also visible from `allocs/op` in benchmark output).
 
-3. **锁与并发访问模式**
-   - 两者都用分片 + 读写锁，设计思路一致。
-   - 但具体锁实现和调度策略不同，会影响在冲突场景下的延迟与吞吐表现。
+3. **Locking and contention behavior**
+   - Both implementations use sharding + RW locks.
+   - Different lock implementations and scheduler behavior can change throughput/latency under contention.
 
-4. **基准实现方式不同**
-   - Go 用 `go test -bench`，统计维度是 `ns/op`、`B/op`、`allocs/op`。
-   - C++ 当前是自定义计时程序，指标以 `ops/s` 为主。若要更严格对齐，建议后续统一到同一负载模型、同一指标单位（例如都换算为吞吐+P99）。
+4. **Benchmark methodology differences**
+   - Go benchmark reports `ns/op`, `B/op`, and `allocs/op` via `go test -bench`.
+   - C++ benchmark currently reports `ops/s` from a custom timer harness.
+   - For stricter comparison, align workload profile + metric units (e.g., throughput + p99 latency) across both languages.
 
 ## 📝 Key Learnings (The Migration Journey)
 
 *This section documents the transition from C++ to Go.*
 
-1.  **Memory Model:** Moving from `std::shared_ptr` semantics to Go's Garbage Collector.
-2.  **Concurrency:** Comparing `std::thread` overhead vs. Goroutine context switching cost.
-3.  **Code Complexity:** Lines of code required to implement the sharded map logic.
+1. **Memory Model:** Moving from `std::shared_ptr` semantics to Go's Garbage Collector.
+2. **Concurrency:** Comparing `std::thread` overhead vs. Goroutine context switching cost.
+3. **Code Complexity:** Lines of code required to implement the sharded map logic.
 
 ---
 
