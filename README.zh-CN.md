@@ -51,13 +51,17 @@ go run cmd/server/main.go
 
 ## 📊 性能基线（示例）
 
-以下为一次本机运行样例（不同机器会有差异）。
+以下为最新一次本机实测（**2026-03-03**，Apple M4，darwin/arm64；不同机器会有差异）。
 
-| 场景 | C++ (ops/s) | Go (ops/s) |
-| :--- | :--- | :--- |
-| Set | `~1.22e6` | `~0.71e6` |
-| Get | `~2.78e6` | `~12.7e6` |
-| 并发 Set+Get | `~1.06e7` | `~1.34e6` |
+测试方法：
+- Go：`go test ./go-iml/cache -run '^$' -bench 'BenchmarkCache(Set|Get|ConcurrentSetGet)$' -benchmem -count=3`
+- C++：`./cpp-impl/build/benchmark_sharded_cache --ops 300000 --threads 16`（连续 3 轮取均值）
+
+| 场景 | C++ (ops/s) | Go (ops/s) | 更快方 |
+| :--- | :--- | :--- | :--- |
+| Set | `7,876,393` | `3,028,890` | `C++ ~2.60x` |
+| Get | `10,965,167` | `30,401,036` | `Go ~2.77x` |
+| 并发 Set+Get | `29,095,933` | `4,518,869` | `C++ ~6.44x` |
 
 ### 性能差异的简单分析
 

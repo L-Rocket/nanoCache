@@ -51,13 +51,17 @@ go run cmd/server/main.go
 
 ## 📊 Performance Benchmark
 
-Baseline result (sample from local run; your machine may differ).
+Baseline result from the latest local run on **2026-03-03** (Apple M4, darwin/arm64; your machine may differ).
 
-| Scenario | C++ (ops/s) | Go (ops/s) |
-| :--- | :--- | :--- |
-| Set | `~1.22e6` | `~0.71e6` |
-| Get | `~2.78e6` | `~12.7e6` |
-| Concurrent Set+Get | `~1.06e7` | `~1.34e6` |
+Method:
+- Go: `go test ./go-iml/cache -run '^$' -bench 'BenchmarkCache(Set|Get|ConcurrentSetGet)$' -benchmem -count=3`
+- C++: `./cpp-impl/build/benchmark_sharded_cache --ops 300000 --threads 16` (3 runs, averaged)
+
+| Scenario | C++ (ops/s) | Go (ops/s) | Faster |
+| :--- | :--- | :--- | :--- |
+| Set | `7,876,393` | `3,028,890` | `C++ ~2.60x` |
+| Get | `10,965,167` | `30,401,036` | `Go ~2.77x` |
+| Concurrent Set+Get | `29,095,933` | `4,518,869` | `C++ ~6.44x` |
 
 ### Why performance may differ (quick analysis)
 
