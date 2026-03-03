@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -187,7 +188,10 @@ func BenchmarkCacheGet(b *testing.B) {
 func BenchmarkCacheConcurrentSetGet(b *testing.B) {
 	c := NewCache(16)
 	defer c.Close()
-	const workers = 16
+	workers := runtime.GOMAXPROCS(0)
+	if workers < 1 {
+		workers = 1
+	}
 	opsPerWorker := b.N / workers
 	keys := make([][]string, workers)
 	for w := 0; w < workers; w++ {
@@ -215,7 +219,10 @@ func BenchmarkCacheConcurrentSetGet(b *testing.B) {
 
 func BenchmarkShardConcurrentSetGet(b *testing.B) {
 	s := newShard()
-	const workers = 16
+	workers := runtime.GOMAXPROCS(0)
+	if workers < 1 {
+		workers = 1
+	}
 	opsPerWorker := b.N / workers
 	keys := make([][]string, workers)
 	for w := 0; w < workers; w++ {

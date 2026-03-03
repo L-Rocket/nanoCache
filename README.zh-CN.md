@@ -51,17 +51,19 @@ go run cmd/server/main.go
 
 ## 📊 性能基线（示例）
 
-以下为最新一次本机实测（**2026-03-03**，Apple M4，darwin/arm64；不同机器会有差异）。
+以下为最新一次本机实测（**2026-03-04**，Apple M4，macOS/darwin arm64；不同机器会有差异）。
 
 测试方法：
+- 并发度对齐：Go 使用 `GOMAXPROCS=10`，C++ 使用 `--threads 10`
+- 热路径对齐：两侧都将 benchmark key 的构造移动到计时区间外
 - Go：`go test ./go-iml/cache -run '^$' -bench 'BenchmarkCache(Set|Get|ConcurrentSetGet)$' -benchmem -count=3`
-- C++：`./cpp-impl/build/benchmark_sharded_cache --ops 300000 --threads 16`（连续 3 轮取均值）
+- C++：`./cpp-impl/build/benchmark_sharded_cache --ops 300000 --threads 10`（连续 3 轮取均值）
 
 | 场景 | C++ (ops/s) | Go (ops/s) | 更快方 |
 | :--- | :--- | :--- | :--- |
-| Set | `7,876,393` | `3,028,890` | `C++ ~2.60x` |
-| Get | `10,965,167` | `30,401,036` | `Go ~2.77x` |
-| 并发 Set+Get | `29,095,933` | `4,518,869` | `C++ ~6.44x` |
+| Set | `10,195,253` | `3,686,323` | `C++ ~2.74x` |
+| Get | `16,019,100` | `6,123,709` | `C++ ~2.62x` |
+| 并发 Set+Get | `27,554,267` | `5,154,838` | `C++ ~5.35x` |
 
 ### 性能差异的简单分析
 
