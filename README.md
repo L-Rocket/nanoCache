@@ -1,6 +1,6 @@
 # NanoCache: High-Performance In-Memory Cache
 
-English (default) | [简体中文](./README.zh-CN.md)
+English | [简体中文](./README.zh-CN.md)
 
 ![Language](https://img.shields.io/badge/language-C%2B%2B17%20%7C%20Go-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -25,11 +25,6 @@ To minimize lock contention in high-concurrency scenarios, NanoCache uses a **Sh
 - **[`cpp-impl/`](./cpp-impl)**: The baseline implementation using C++17. Focuses on manual memory management using `std::shared_ptr` and `std::shared_mutex`.
 - **[`go-iml/`](./go-iml)**: The target implementation using Go. Focuses on Goroutines, Channels, and the Go runtime scheduler.
 
-## 🔁 CI/CD
-
-GitHub Actions workflow is provided at `.github/workflows/ci.yml` with:
-- Go unit tests + benchmark smoke test
-- C++ CMake build + CTest + benchmark smoke test
 
 ## 🚀 Getting Started
 

@@ -1,6 +1,6 @@
 # NanoCache：高性能内存缓存
 
-[English (default)](./README.md) | 简体中文
+[English](./README.md) | 简体中文
 
 ![Language](https://img.shields.io/badge/language-C%2B%2B17%20%7C%20Go-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -25,11 +25,6 @@ NanoCache 是一个分片（sharded）、线程安全的内存键值缓存。
 - **[`cpp-impl/`](./cpp-impl)**：C++17 实现，偏向手动内存管理与原生并发控制。
 - **[`go-iml/`](./go-iml)**：Go 实现，偏向 Goroutine 与运行时调度模型。
 
-## 🔁 CI/CD
-
-GitHub Actions 工作流位于 `.github/workflows/ci.yml`，包含：
-- Go 单测 + benchmark 冒烟
-- C++ CMake 构建 + CTest + benchmark 冒烟
 
 ## 🚀 快速开始
 
