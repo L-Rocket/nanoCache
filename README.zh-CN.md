@@ -25,6 +25,12 @@ NanoCache 是一个分片（sharded）、线程安全的内存键值缓存。
 - **[`cpp-impl/`](./cpp-impl)**：C++17 实现，偏向手动内存管理与原生并发控制。
 - **[`go-iml/`](./go-iml)**：Go 实现，偏向 Goroutine 与运行时调度模型。
 
+## 🔁 CI/CD
+
+GitHub Actions 工作流位于 `.github/workflows/ci.yml`，包含：
+- Go 单测 + benchmark 冒烟
+- C++ CMake 构建 + CTest + benchmark 冒烟
+
 ## 🚀 快速开始
 
 ### C++ 实现
@@ -50,15 +56,15 @@ go run cmd/server/main.go
 
 ## 📊 性能基线（示例）
 
-以下为一次本机运行样例（不同机器会有差异）：
+以下为一次本机运行样例（不同机器会有差异）。
 
-| 场景 | C++ | Go |
+> 为了便于直接比较，下面统一为 **ops/s**。
+
+| 场景 | C++ (ops/s) | Go (ops/s，按 ns/op 换算) |
 | :--- | :--- | :--- |
-| Set | `~1.22e6 ops/s` | `~1258–1629 ns/op` |
-| Get | `~2.78e6 ops/s` | `~74.7–83.4 ns/op` |
-| 并发 Set+Get | `~1.06e7 ops/s` | `~671.6–847.3 ns/op` |
-
-> 说明：当前 C++ 基准输出单位为 **ops/s**，Go 使用 `testing.B` 输出 **ns/op**。可用于趋势对比，不是严格同口径绝对值对比。
+| Set | `~1.22e6` | `~0.61e6–0.80e6` |
+| Get | `~2.78e6` | `~12.0e6–13.4e6` |
+| 并发 Set+Get | `~1.06e7` | `~1.18e6–1.49e6` |
 
 ### 性能差异的简单分析
 
@@ -74,22 +80,10 @@ go run cmd/server/main.go
    - 两端都采用分片 + 读写锁。
    - 但锁实现细节与调度策略不同，会影响冲突时延迟和吞吐。
 
-4. **基准方法不同**
-   - Go 使用 `go test -bench`，输出 `ns/op`、`B/op`、`allocs/op`。
-   - C++ 当前是自定义计时程序，输出 `ops/s`。
+4. **即使统一单位，基准方法仍有差异**
+   - Go 使用 `go test -bench`。
+   - C++ 当前是自定义计时程序。
    - 若需更严格横向比较，建议统一负载模型与指标（如吞吐 + p99）。
-
-## 📝 迁移中的关键观察
-
-1. **内存模型：** 从 `std::shared_ptr` 语义迁移到 Go GC 思维。
-2. **并发模型：** `std::thread` 开销与 goroutine 调度成本对比。
-3. **代码复杂度：** 分片 map 逻辑在两种语言中的实现复杂度差异。
-
-## 🔁 CI/CD
-
-GitHub Actions 工作流位于 `.github/workflows/ci.yml`，包含：
-- Go 单测 + benchmark 冒烟
-- C++ CMake 构建 + CTest + benchmark 冒烟
 
 ## 🧪 本机一键性能对比（C++ vs Go）
 
@@ -104,3 +98,13 @@ GitHub Actions 工作流位于 `.github/workflows/ci.yml`，包含：
 2. 构建 C++ benchmark 目标
 3. 运行 C++ benchmark 并输出 ops/s
 4. 将原始结果保存到 `perf_go.txt` 和 `perf_cpp.txt`
+
+## 📝 迁移中的关键观察
+
+1. **内存模型：** 从 `std::shared_ptr` 语义迁移到 Go GC 思维。
+2. **并发模型：** `std::thread` 开销与 goroutine 调度成本对比。
+3. **代码复杂度：** 分片 map 逻辑在两种语言中的实现复杂度差异。
+
+## License
+
+MIT

@@ -25,6 +25,12 @@ To minimize lock contention in high-concurrency scenarios, NanoCache uses a **Sh
 - **[`cpp-impl/`](./cpp-impl)**: The baseline implementation using C++17. Focuses on manual memory management using `std::shared_ptr` and `std::shared_mutex`.
 - **[`go-iml/`](./go-iml)**: The target implementation using Go. Focuses on Goroutines, Channels, and the Go runtime scheduler.
 
+## 🔁 CI/CD
+
+GitHub Actions workflow is provided at `.github/workflows/ci.yml` with:
+- Go unit tests + benchmark smoke test
+- C++ CMake build + CTest + benchmark smoke test
+
 ## 🚀 Getting Started
 
 ### C++ Implementation
@@ -50,20 +56,20 @@ go run cmd/server/main.go
 
 ## 📊 Performance Benchmark
 
-Baseline result (sample from local run; your machine may differ):
+Baseline result (sample from local run; your machine may differ).
 
-| Scenario | C++ | Go |
+> Unit is unified to **ops/s** for both C++ and Go for direct comparison.
+
+| Scenario | C++ (ops/s) | Go (ops/s, converted from ns/op) |
 | :--- | :--- | :--- |
-| Set | `~1.22e6 ops/s` | `~1258–1629 ns/op` |
-| Get | `~2.78e6 ops/s` | `~74.7–83.4 ns/op` |
-| Concurrent Set+Get | `~1.06e7 ops/s` | `~671.6–847.3 ns/op` |
-
-> Note: C++ benchmark currently reports **ops/s**, while Go benchmark reports **ns/op** from `testing.B`. This is suitable for trend comparison, not strict apples-to-apples absolute comparison.
+| Set | `~1.22e6` | `~0.61e6–0.80e6` |
+| Get | `~2.78e6` | `~12.0e6–13.4e6` |
+| Concurrent Set+Get | `~1.06e7` | `~1.18e6–1.49e6` |
 
 ### Why performance may differ (quick analysis)
 
 1. **Runtime model differences**
-   - C++ runs directly on native threads and can keep hot paths close to zero runtime overhead.
+   - C++ runs directly on native threads and can keep hot paths close to lower runtime overhead.
    - Go includes goroutine scheduling and GC behavior, which improves concurrency ergonomics but adds runtime cost per operation.
 
 2. **Allocation and memory management differences**
@@ -74,30 +80,9 @@ Baseline result (sample from local run; your machine may differ):
    - Both implementations use sharding + RW locks.
    - Different lock implementations and scheduler behavior can change throughput/latency under contention.
 
-4. **Benchmark methodology differences**
-   - Go benchmark reports `ns/op`, `B/op`, and `allocs/op` via `go test -bench`.
-   - C++ benchmark currently reports `ops/s` from a custom timer harness.
-   - For stricter comparison, align workload profile + metric units (e.g., throughput + p99 latency) across both languages.
-
-## 📝 Key Learnings (The Migration Journey)
-
-*This section documents the transition from C++ to Go.*
-
-1. **Memory Model:** Moving from `std::shared_ptr` semantics to Go's Garbage Collector.
-2. **Concurrency:** Comparing `std::thread` overhead vs. Goroutine context switching cost.
-3. **Code Complexity:** Lines of code required to implement the sharded map logic.
-
----
-
-## License
-
-MIT
-
-## 🔁 CI/CD
-
-GitHub Actions workflow is provided at `.github/workflows/ci.yml` with:
-- Go unit tests + benchmark smoke test
-- C++ CMake build + CTest + benchmark smoke test
+4. **Benchmark methodology differences still exist**
+   - Even after unit conversion, benchmark harnesses are different (`go test -bench` vs custom C++ timer).
+   - For stricter comparison, align workload profile + metric collection (e.g., throughput + p99 latency) across both languages.
 
 ## 🧪 Local Performance Comparison (C++ vs Go)
 
@@ -112,3 +97,17 @@ It will:
 2. Build C++ benchmark target
 3. Run C++ benchmark and print ops/s
 4. Save raw outputs to `perf_go.txt` and `perf_cpp.txt`
+
+## 📝 Key Learnings (The Migration Journey)
+
+*This section documents the transition from C++ to Go.*
+
+1. **Memory Model:** Moving from `std::shared_ptr` semantics to Go's Garbage Collector.
+2. **Concurrency:** Comparing `std::thread` overhead vs. Goroutine context switching cost.
+3. **Code Complexity:** Lines of code required to implement the sharded map logic.
+
+---
+
+## License
+
+MIT
