@@ -51,37 +51,23 @@ go run cmd/server/main.go
 
 ## 📊 Performance Benchmark
 
-Baseline result from the latest local run on **2026-03-04** (Apple M4, macOS/darwin arm64; your machine may differ).
+Baseline result from the latest local run on **2026-10-20** (Apple M4, macOS/darwin arm64; your machine may differ).
 
 Method:
-- Aligned concurrency: `GOMAXPROCS=10` (Go) and `--threads 10` (C++)
-- Aligned hot path: benchmark keys are precomputed before timing in both implementations
-- Go: `go test ./go-iml/cache -run '^$' -bench 'BenchmarkCache(Set|Get|ConcurrentSetGet)$' -benchmem -count=3`
-- C++: `./cpp-impl/build/benchmark_sharded_cache --ops 300000 --threads 10` (3 runs, averaged)
+- 256 shards, 10-second TTL, and a one-second background-cleanup interval in both implementations
+- 10 workers, 300,000 exact work items, identical precomputed key/value shapes, and optimized builds
+- Five isolated process runs; results below are arithmetic means with sample coefficient of variation (CV)
+- Set and Get use operations/second. Concurrent Set+Get uses pairs/second, where one pair is one Set followed by one Get.
 
-| Scenario | C++ (ops/s) | Go (ops/s) | Faster |
+| Scenario | C++ mean/s (CV) | Go mean/s (CV) | C++ / Go |
 | :--- | :--- | :--- | :--- |
-| Set | `10,195,253` | `3,686,323` | `C++ ~2.74x` |
-| Get | `16,019,100` | `6,123,709` | `C++ ~2.62x` |
-| Concurrent Set+Get | `27,554,267` | `5,154,838` | `C++ ~5.35x` |
+| Set (operations) | `8,155,290` (`12.35%`) | `6,025,967` (`3.71%`) | `1.35x` |
+| Get (operations) | `14,808,860` (`1.25%`) | `8,873,410` (`2.08%`) | `1.67x` |
+| Concurrent Set+Get (pairs) | `15,396,280` (`4.42%`) | `11,752,032` (`1.82%`) | `1.31x` |
 
-### Why performance may differ (quick analysis)
+The earlier `5.35x` concurrent figure compared C++ individual operations/second with Go Set+Get pairs/second. With the workload and units normalized, this run measured `1.31x`. The throughput table alone does not identify the cause of the remaining gap.
 
-1. **Runtime model differences**
-   - C++ runs directly on native threads and can keep hot paths close to lower runtime overhead.
-   - Go includes goroutine scheduling and GC behavior, which improves concurrency ergonomics but adds runtime cost per operation.
-
-2. **Allocation and memory management differences**
-   - C++ object lifetime is more explicitly controlled.
-   - Go `Set`/concurrent paths may introduce allocation and GC pressure (also visible from `allocs/op` in benchmark output).
-
-3. **Locking and contention behavior**
-   - Both implementations use sharding + RW locks.
-   - Different lock implementations and scheduler behavior can change throughput/latency under contention.
-
-4. **Benchmark methodology differences still exist**
-   - Even after unit conversion, benchmark harnesses are different (`go test -bench` vs custom C++ timer).
-   - For stricter comparison, align workload profile + metric collection (e.g., throughput + p99 latency) across both languages.
+See [the benchmark analysis](docs/benchmark-analysis.md) for Go CPU/allocation profiles, an interleaved GC control, measured contributors, and the limits of the attribution.
 
 ## 🧪 Local Performance Comparison (C++ vs Go)
 
@@ -92,10 +78,11 @@ Run one command from repo root:
 ```
 
 It will:
-1. Run Go benchmarks in `go-iml/cache`
+1. Run isolated Go benchmark processes in `go-iml/cache`
 2. Build C++ benchmark target
-3. Run C++ benchmark and print ops/s
-4. Save raw outputs to `perf_go.txt` and `perf_cpp.txt`
+3. Run isolated C++ benchmark processes
+4. Print normalized means, variation, and C++/Go ratios
+5. Save raw outputs to `perf_go.txt` and `perf_cpp.txt`
 
 ## 📝 Key Learnings (The Migration Journey)
 

@@ -12,7 +12,11 @@ struct Result {
     std::string name;
     double seconds;
     size_t operations;
+    bool operations_are_pairs;
 };
+
+constexpr size_t kShardCount = 256;
+constexpr int kTtlSeconds = 10;
 
 std::vector<std::string> build_keys(size_t operations) {
     std::vector<std::string> keys;
@@ -24,24 +28,24 @@ std::vector<std::string> build_keys(size_t operations) {
 }
 
 Result run_set_benchmark(size_t operations) {
-    ShardedCache cache;
+    ShardedCache cache(kShardCount);
     const auto keys = build_keys(operations);
 
     auto start = Clock::now();
     for (size_t i = 0; i < operations; ++i) {
-        cache.set(keys[i], "v");
+        cache.set(keys[i], "v", kTtlSeconds);
     }
     auto end = Clock::now();
     std::chrono::duration<double> diff = end - start;
-    return {"cpp_set", diff.count(), operations};
+    return {"cpp_set", diff.count(), operations, false};
 }
 
 Result run_get_benchmark(size_t operations) {
-    ShardedCache cache;
+    ShardedCache cache(kShardCount);
     const auto keys = build_keys(operations);
 
     for (size_t i = 0; i < operations; ++i) {
-        cache.set(keys[i], "v");
+        cache.set(keys[i], "v", kTtlSeconds);
     }
 
     auto start = Clock::now();
@@ -50,17 +54,19 @@ Result run_get_benchmark(size_t operations) {
     }
     auto end = Clock::now();
     std::chrono::duration<double> diff = end - start;
-    return {"cpp_get", diff.count(), operations};
+    return {"cpp_get", diff.count(), operations, false};
 }
 
-Result run_concurrent_set_get_benchmark(size_t operations, size_t threads) {
-    ShardedCache cache;
+Result run_concurrent_set_get_benchmark(size_t pairs, size_t threads) {
+    ShardedCache cache(kShardCount);
     std::vector<std::thread> workers;
     workers.reserve(threads);
 
-    const size_t per_thread = operations / threads;
     std::vector<std::vector<std::string>> keys(threads);
     for (size_t t = 0; t < threads; ++t) {
+        const size_t start = pairs * t / threads;
+        const size_t end = pairs * (t + 1) / threads;
+        const size_t per_thread = end - start;
         auto& thread_keys = keys[t];
         thread_keys.reserve(per_thread);
         for (size_t i = 0; i < per_thread; ++i) {
@@ -70,10 +76,9 @@ Result run_concurrent_set_get_benchmark(size_t operations, size_t threads) {
 
     auto start = Clock::now();
     for (size_t t = 0; t < threads; ++t) {
-        workers.emplace_back([t, per_thread, &cache, &keys]() {
-            for (size_t i = 0; i < per_thread; ++i) {
-                const std::string& key = keys[t][i];
-                cache.set(key, "v");
+        workers.emplace_back([t, &cache, &keys]() {
+            for (const std::string& key : keys[t]) {
+                cache.set(key, "v", kTtlSeconds);
                 (void)cache.get(key);
             }
         });
@@ -85,16 +90,23 @@ Result run_concurrent_set_get_benchmark(size_t operations, size_t threads) {
 
     auto end = Clock::now();
     std::chrono::duration<double> diff = end - start;
-    return {"cpp_concurrent_set_get", diff.count(), per_thread * threads * 2};
+    return {"cpp_concurrent_set_get", diff.count(), pairs, true};
 }
 
 void print_result(const Result& result) {
-    const double ops_per_second = result.operations / result.seconds;
+    const size_t individual_operations = result.operations_are_pairs
+        ? result.operations * 2
+        : result.operations;
+    const double ops_per_second = individual_operations / result.seconds;
     std::cout << result.name
               << " seconds=" << result.seconds
-              << " operations=" << result.operations
-              << " ops_per_second=" << ops_per_second
-              << '\n';
+              << " operations=" << individual_operations
+              << " ops_per_second=" << ops_per_second;
+    if (result.operations_are_pairs) {
+        std::cout << " pairs=" << result.operations
+                  << " pairs_per_second=" << result.operations / result.seconds;
+    }
+    std::cout << '\n';
 }
 
 int main(int argc, char** argv) {

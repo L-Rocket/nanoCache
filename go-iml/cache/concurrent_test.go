@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -155,49 +156,54 @@ func TestCacheConcurrentWithJanitor(t *testing.T) {
 }
 
 func BenchmarkCacheSet(b *testing.B) {
-	c := NewCache(16)
+	c := NewCache(256)
 	defer c.Close()
 
 	keys := make([]string, b.N)
 	for i := 0; i < b.N; i++ {
-		keys[i] = fmt.Sprintf("bench-key-%d", i)
+		keys[i] = "k" + strconv.Itoa(i)
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c.Set(keys[i], "value", time.Second)
+		c.Set(keys[i], "v", 10*time.Second)
 	}
+	b.StopTimer()
+	b.ReportMetric(float64(b.N)/b.Elapsed().Seconds(), "ops/s")
 }
 
 func BenchmarkCacheGet(b *testing.B) {
-	c := NewCache(16)
+	c := NewCache(256)
 	defer c.Close()
 
 	keys := make([]string, b.N)
 	for i := 0; i < b.N; i++ {
-		keys[i] = fmt.Sprintf("bench-key-%d", i)
-		c.Set(keys[i], "value", time.Second)
+		keys[i] = "k" + strconv.Itoa(i)
+		c.Set(keys[i], "v", 10*time.Second)
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		c.Get(keys[i])
 	}
+	b.StopTimer()
+	b.ReportMetric(float64(b.N)/b.Elapsed().Seconds(), "ops/s")
 }
 
 func BenchmarkCacheConcurrentSetGet(b *testing.B) {
-	c := NewCache(16)
+	c := NewCache(256)
 	defer c.Close()
 	workers := runtime.GOMAXPROCS(0)
 	if workers < 1 {
 		workers = 1
 	}
-	opsPerWorker := b.N / workers
 	keys := make([][]string, workers)
 	for w := 0; w < workers; w++ {
-		keys[w] = make([]string, opsPerWorker)
-		for i := 0; i < opsPerWorker; i++ {
-			keys[w][i] = fmt.Sprintf("bench-%d-%d", w, i)
+		start := b.N * w / workers
+		end := b.N * (w + 1) / workers
+		keys[w] = make([]string, end-start)
+		for i := range keys[w] {
+			keys[w][i] = "k" + strconv.Itoa(w) + "_" + strconv.Itoa(i)
 		}
 	}
 
@@ -207,14 +213,17 @@ func BenchmarkCacheConcurrentSetGet(b *testing.B) {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < opsPerWorker; j++ {
-				key := keys[id][j]
-				c.Set(key, "value", time.Second)
+			for _, key := range keys[id] {
+				c.Set(key, "v", 10*time.Second)
 				c.Get(key)
 			}
 		}(i)
 	}
 	wg.Wait()
+	b.StopTimer()
+	elapsed := b.Elapsed().Seconds()
+	b.ReportMetric(float64(b.N)/elapsed, "pairs/s")
+	b.ReportMetric(float64(2*b.N)/elapsed, "ops/s")
 }
 
 func BenchmarkShardConcurrentSetGet(b *testing.B) {

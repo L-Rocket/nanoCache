@@ -51,38 +51,23 @@ go run cmd/server/main.go
 
 ## 📊 性能基线（示例）
 
-以下为最新一次本机实测（**2026-03-04**，Apple M4，macOS/darwin arm64；不同机器会有差异）。
+以下为最新一次本机实测（**2026-10-20**，Apple M4，macOS/darwin arm64；不同机器会有差异）。
 
 测试方法：
-- 并发度对齐：Go 使用 `GOMAXPROCS=10`，C++ 使用 `--threads 10`
-- 热路径对齐：两侧都将 benchmark key 的构造移动到计时区间外
-- Go：`go test ./go-iml/cache -run '^$' -bench 'BenchmarkCache(Set|Get|ConcurrentSetGet)$' -benchmem -count=3`
-- C++：`./cpp-impl/build/benchmark_sharded_cache --ops 300000 --threads 10`（连续 3 轮取均值）
+- 两端均使用 256 个 shard、10 秒 TTL 和 1 秒后台清理间隔
+- 10 个 worker、300,000 个精确工作项、相同的预生成 key/value 形式，并使用优化构建
+- 运行 5 个相互隔离的进程；下表为算术平均值及样本变异系数（CV）
+- Set 和 Get 使用每秒操作数；并发 Set+Get 使用每秒 pair 数，一个 pair 表示一次 Set 后紧接一次 Get
 
-| 场景 | C++ (ops/s) | Go (ops/s) | 更快方 |
+| 场景 | C++ 平均吞吐/s (CV) | Go 平均吞吐/s (CV) | C++ / Go |
 | :--- | :--- | :--- | :--- |
-| Set | `10,195,253` | `3,686,323` | `C++ ~2.74x` |
-| Get | `16,019,100` | `6,123,709` | `C++ ~2.62x` |
-| 并发 Set+Get | `27,554,267` | `5,154,838` | `C++ ~5.35x` |
+| Set（操作） | `8,155,290` (`12.35%`) | `6,025,967` (`3.71%`) | `1.35x` |
+| Get（操作） | `14,808,860` (`1.25%`) | `8,873,410` (`2.08%`) | `1.67x` |
+| 并发 Set+Get（pair） | `15,396,280` (`4.42%`) | `11,752,032` (`1.82%`) | `1.31x` |
 
-### 性能差异的简单分析
+先前的并发 `5.35x` 将 C++ 的单次操作数/秒与 Go 的 Set+Get pair 数/秒直接比较。统一负载与单位后，本次结果为 `1.31x`。吞吐表本身不能说明剩余差距的原因。
 
-1. **运行时模型不同**
-   - C++ 更接近原生线程模型，热点路径额外运行时开销较小。
-   - Go 有 goroutine 调度与 GC 机制，开发并发更友好，但单操作存在运行时成本。
-
-2. **内存分配与回收机制不同**
-   - C++ 生命周期控制更显式。
-   - Go 在 `Set`/并发路径可能出现更多分配与 GC 压力（可从 `allocs/op` 观察）。
-
-3. **锁实现与竞争行为不同**
-   - 两端都采用分片 + 读写锁。
-   - 但锁实现细节与调度策略不同，会影响冲突时延迟和吞吐。
-
-4. **即使统一单位，基准方法仍有差异**
-   - Go 使用 `go test -bench`。
-   - C++ 当前是自定义计时程序。
-   - 若需更严格横向比较，建议统一负载模型与指标（如吞吐 + p99）。
+Go CPU/内存分配剖析、交错 GC 对照实验、实测影响因素及归因限制见[基准分析](docs/benchmark-analysis.md)。
 
 ## 🧪 本机一键性能对比（C++ vs Go）
 
@@ -93,10 +78,11 @@ go run cmd/server/main.go
 ```
 
 脚本会：
-1. 跑 Go benchmark（`go-iml/cache`）
+1. 在隔离进程中运行 Go benchmark（`go-iml/cache`）
 2. 构建 C++ benchmark 目标
-3. 运行 C++ benchmark 并输出 ops/s
-4. 将原始结果保存到 `perf_go.txt` 和 `perf_cpp.txt`
+3. 在隔离进程中运行 C++ benchmark
+4. 输出统一口径的平均值、变异和 C++/Go 比率
+5. 将原始结果保存到 `perf_go.txt` 和 `perf_cpp.txt`
 
 ## 📝 迁移中的关键观察
 
